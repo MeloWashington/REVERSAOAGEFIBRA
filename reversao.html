@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Suporte Técnico - Gerenciamento de Quebras</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        /* Estilos otimizados para GitHub Pages */
         :root {
             --primary: #0f766e;
             --primary-light: #14b8a6;
@@ -482,6 +482,18 @@
             margin-top: 10px;
             justify-content: flex-end;
         }
+        .github-link {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 600;
+            margin-top: 10px;
+        }
+        .github-link:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -744,8 +756,14 @@
         
         <footer>
             <p>© 2025 Suporte Técnico - Gerenciamento de Quebras. Todos os direitos reservados.</p>
+            <a href="#" class="github-link" id="githubLink">
+                <i class="fab fa-github"></i> Ver código no GitHub
+            </a>
         </footer>
     </div>
+    
+    <!-- Chart.js local para GitHub Pages -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <script>
         // ID da sua planilha Google Sheets
@@ -778,6 +796,7 @@
         const testConnectionBtn = document.getElementById('testConnectionBtn');
         const searchInput = document.getElementById('searchInput');
         const searchBtn = document.getElementById('searchBtn');
+        const githubLink = document.getElementById('githubLink');
         
         // Inicializar variáveis
         let submissions = [];
@@ -1266,7 +1285,12 @@
                 const contentType = response.headers.get('content-type');
                 if (!contentType || !contentType.includes('application/json')) {
                     const text = await response.text();
-                    throw new Error('Resposta não é JSON. Verifique se a URL está correta.');
+                    // Se a resposta começar com <!DOCTYPE, é uma página de erro
+                    if (text.startsWith('<!DOCTYPE')) {
+                        throw new Error('A URL pode estar incorreta. Verifique se é a URL de implantação do Google Apps Script.');
+                    } else {
+                        throw new Error('Resposta não é JSON: ' + text.substring(0, 100));
+                    }
                 }
                 
                 const result = await response.json();
@@ -1274,7 +1298,7 @@
                     infoText.textContent = 'Conexão bem-sucedida!';
                     infoMessage.style.display = 'block';
                 } else {
-                    throw new Error('Resposta inesperada do servidor');
+                    throw new Error('Resposta inesperada do servidor: ' + JSON.stringify(result));
                 }
             } catch (error) {
                 console.error('Erro ao testar conexão:', error);
@@ -1288,6 +1312,15 @@
         // Pesquisar submissões
         searchInput.addEventListener('input', updateLastSubmissions);
         searchBtn.addEventListener('click', updateLastSubmissions);
+        
+        // Link para GitHub
+        githubLink.addEventListener('click', function(e) {
+            e.preventDefault();
+            const repoName = prompt("Digite o nome do repositório do GitHub:", "meu-repositorio");
+            if (repoName) {
+                window.open(`https://github.com/${repoName}`, '_blank');
+            }
+        });
         
         // Inicializar a página
         function initPage() {
