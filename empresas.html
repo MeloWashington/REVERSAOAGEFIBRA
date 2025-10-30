@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão Fibra + Google Sheets</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <style>
+        :root {
+            --age: #3498db; --liknet: #e74c3c; --i10: #f39c12; --ponto: #27ae60;
+            --total: #2c3e50; --dark: #2c3e50; --light: #f8f9fa; --success: #27ae60; --danger: #e74c3c;
+            --radius: 12px; --shadow: 0 8px 20px rgba(0,0,0,0.1);
+        }
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', sans-serif; }
+        body { background: linear-gradient(135deg, #f5f7fa, #c3cfe2); color: var(--dark); padding: 20px; min-height: 100vh; }
+        .container { max-width: 1300px; margin: auto; }
+
+        /* Login */
+        .login { background: white; padding: 40px; border-radius: var(--radius); box-shadow: var(--shadow); max-width: 400px; margin: 80px auto; text-align: center; }
+        .login input { width: 100%; padding: 14px; margin: 10px 0; border: 2px solid #ddd; border-radius: 8px; font-size: 16px; }
+        .login button { width: 100%; padding: 14px; background: var(--age); color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .login button:hover { background: #2980b9; }
+        .erro { color: #721c24; background: #f8d7da; padding: 10px; border-radius: 6px; margin-top: 10px; display: none; }
+
+        /* Header */
+        header { display: flex; justify-content: space-between; align-items: center; background: white; padding: 20px; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 20px; }
+        .header-title h1 { font-size: 24px; }
+        .header-title p { font-size: 14px; color: #7f8c8d; }
+
+        /* Abas */
+        .tabs { display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab { padding: 12px 20px; border: none; border-radius: 8px; color: white; font-weight: 600; cursor: pointer; transition: all 0.3s; }
+        .tab.active { box-shadow: var(--shadow); transform: translateY(-2px); }
+        .tab[data-c="age"] { background: var(--age); }
+        .tab[data-c="liknet"] { background: var(--liknet); }
+        .tab[data-c="i10"] { background: var(--i10); }
+        .tab[data-c="ponto"] { background: var(--ponto); }
+        .tab[data-c="total"] { background: var(--total); }
+
+        /* Seções */
+        .section { display: none; background: white; padding: 25px; border-radius: var(--radius); box-shadow: var(--shadow); }
+        .section.active { display: block; }
+
+        /* Grid */
+        .grid { display: grid; gap: 15px; }
+        .grid-3 { grid-template-columns: 1fr 1fr 1fr; }
+        .grid-2 { grid-template-columns: 1fr 1fr; }
+        @media (max-width: 900px) { .grid-3, .grid-2 { grid-template-columns: 1fr; } }
+
+        .card { background: var(--light); padding: 20px; border-radius: 10px; }
+        .title { font-size: 18px; margin-bottom: 15px; border-bottom: 1px solid #eee; padding-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+
+        label { font-weight: 500; display: block; margin-bottom: 6px; }
+        input { width: 100%; padding: 10px; border: 2px solid #ddd; border-radius: 8px; font-size: 15px; }
+        input:focus { border-color: var(--age); outline: none; }
+        .calc { background: #e9ecef; color: #495057; font-weight: bold; }
+
+        /* Registro */
+        .form-reg { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 10px; align-items: end; margin-bottom: 15px; }
+        @media (max-width: 768px) { .form-reg { grid-template-columns: 1fr; } }
+        .btn-reg { background: var(--age); color: white; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: bold; }
+        .btn-reg:hover { background: #2980b9; }
+
+        /* Tabela */
+        .hist { max-height: 280px; overflow: auto; margin: 15px 0; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f1f3f5; padding: 10px; text-align: left; font-weight: 600; }
+        td { padding: 10px; border-bottom: 1px solid #eee; }
+        .del { color: var(--danger); cursor: pointer; font-size: 14px; }
+
+        /* Botões */
+        .export { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 15px; }
+        .btn-exp { padding: 10px 16px; border: none; border-radius: 8px; color: white; cursor: pointer; display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; }
+        .pdf { background: #e74c3c; }
+        .csv { background: #27ae60; }
+        .wa { background: #25d366; }
+        .sheets { background: #4285f4; }
+        .btn-exp:hover, .btn-sheets:hover { transform: translateY(-2px); }
+
+        /* Total Geral */
+        .total-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-top: 20px; }
+        .total-card { background: linear-gradient(135deg, var(--total), #34495e); color: white; padding: 20px; border-radius: 10px; text-align: center; }
+        .total-card h4 { font-size: 14px; opacity: 0.9; }
+        .total-card p { font-size: 28px; font-weight: bold; margin: 8px 0; }
+
+        .status { padding: 10px; border-radius: 8px; margin-top: 10px; font-size: 14px; display: none; }
+        .ok { background: #d4edda; color: #155724; }
+        .erro { background: #f8d7da; color: #721c24; }
+
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login" class="login">
+    <h2>Gestão Fibra + Sheets</h2>
+    <input type="text" id="user" placeholder="Usuário" value="AGE">
+    <input type="password" id="pass" placeholder="Senha" value="AGE">
+    <button onclick="login()">Entrar</button>
+    <p id="erro" class="erro hidden">Usuário ou senha incorretos!</p>
+</div>
+
+<!-- APP -->
+<div id="app" class="container hidden">
+    <header>
+        <div class="header-title">
+            <h1>Dashboard Multi-Empresas</h1>
+            <p id="data-atual"></p>
+        </div>
+        <button onclick="logout()" style="background:#e74c3c;color:white;padding:10px 20px;border:none;border-radius:8px;">Sair</button>
+    </header>
+
+    <div class="tabs">
+        <button class="tab active" data-c="age">AGE FIBRA</button>
+        <button class="tab" data-c="liknet">Liknet</button>
+        <button class="tab" data-c="i10">I10</button>
+        <button class="tab" data-c="ponto">Ponto Net</button>
+        <button class="tab" data-c="total">TODAS JUNTAS</button>
+    </div>
+
+    <!-- AGE FIBRA -->
+    <div id="sec-age" class="section active">
+        <div class="grid grid-2">
+            <div class="card">
+                <h3 class="title">Carga Inicial - AGE</h3>
+                <div class="grid grid-3">
+                    <div><label>Ativações</label><input id="age-i-a" type="number" value="5"></div>
+                    <div><label>Mudanças</label><input id="age-i-m" type="number" value="3"></div>
+                    <div><label>Visitas</label><input id="age-i-v" type="number" value="2"></div>
+                </div>
+                <h3 class="title" style="margin-top:20px;">Técnicos</h3>
+                <div class="grid grid-2">
+                    <div><label>Total</label><input id="age-t" type="number" value="15"></div>
+                    <div><label>Ativos</label><input id="age-a" type="number" value="12"></div>
+                    <div><label>Ausentes</label><input id="age-x" class="calc" readonly></div>
+                    <div><label>Prod./Técnico</label><input id="age-p" class="calc" readonly></div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 class="title">Registrar Produção</h3>
+                <div class="form-reg">
+                    <div><label>Ativações</label><input id="age-ra" type="number" min="0" value="0"></div>
+                    <div><label>Mudanças</label><input id="age-rm" type="number" min="0" value="0"></div>
+                    <div><label>Visitas</label><input id="age-rv" type="number" min="0" value="0"></div>
+                    <button class="btn-reg" onclick="reg('age')">Registrar</button>
+                </div>
+                <div class="hist">
+                    <table><thead><tr><th>Hora</th><th>A</th><th>M</th><th>V</th><th></th></tr></thead><tbody id="hist-age"></tbody></table>
+                </div>
+                <div class="export">
+                    <button class="btn-exp pdf" onclick="exp('age','pdf')">PDF</button>
+                    <button class="btn-exp csv" onclick="exp('age','csv')">CSV</button>
+                    <button class="btn-exp wa" onclick="wa('age')">WhatsApp</button>
+                    <button class="btn-exp sheets" onclick="sincronizarSheets('age')">Sheets</button>
+                </div>
+                <div id="status-age" class="status"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Liknet -->
+    <div id="sec-liknet" class="section">
+        <div class="grid grid-2">
+            <div class="card">
+                <h3 class="title">Carga Inicial - Liknet</h3>
+                <div class="grid grid-3">
+                    <div><label>Ativações</label><input id="liknet-i-a" type="number" value="4"></div>
+                    <div><label>Mudanças</label><input id="liknet-i-m" type="number" value="2"></div>
+                    <div><label>Visitas</label><input id="liknet-i-v" type="number" value="1"></div>
+                </div>
+                <h3 class="title" style="margin-top:20px;">Técnicos</h3>
+                <div class="grid grid-2">
+                    <div><label>Total</label><input id="liknet-t" type="number" value="10"></div>
+                    <div><label>Ativos</label><input id="liknet-a" type="number" value="9"></div>
+                    <div><label>Ausentes</label><input id="liknet-x" class="calc" readonly></div>
+                    <div><label>Prod./Técnico</label><input id="liknet-p" class="calc" readonly></div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 class="title">Registrar Produção</h3>
+                <div class="form-reg">
+                    <div><label>Ativações</label><input id="liknet-ra" type="number" min="0" value="0"></div>
+                    <div><label>Mudanças</label><input id="liknet-rm" type="number" min="0" value="0"></div>
+                    <div><label>Visitas</label><input id="liknet-rv" type="number" min="0" value="0"></div>
+                    <button class="btn-reg" onclick="reg('liknet')">Registrar</button>
+                </div>
+                <div class="hist">
+                    <table><thead><tr><th>Hora</th><th>A</th><th>M</th><th>V</th><th></th></tr></thead><tbody id="hist-liknet"></tbody></table>
+                </div>
+                <div class="export">
+                    <button class="btn-exp pdf" onclick="exp('liknet','pdf')">PDF</button>
+                    <button class="btn-exp csv" onclick="exp('liknet','csv')">CSV</button>
+                    <button class="btn-exp wa" onclick="wa('liknet')">WhatsApp</button>
+                    <button class="btn-exp sheets" onclick="sincronizarSheets('liknet')">Sheets</button>
+                </div>
+                <div id="status-liknet" class="status"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- I10 -->
+    <div id="sec-i10" class="section">
+        <div class="grid grid-2">
+            <div class="card">
+                <h3 class="title">Carga Inicial - I10</h3>
+                <div class="grid grid-3">
+                    <div><label>Ativações</label><input id="i10-i-a" type="number" value="3"></div>
+                    <div><label>Mudanças</label><input id="i10-i-m" type="number" value="1"></div>
+                    <div><label>Visitas</label><input id="i10-i-v" type="number" value="2"></div>
+                </div>
+                <h3 class="title" style="margin-top:20px;">Técnicos</h3>
+                <div class="grid grid-2">
+                    <div><label>Total</label><input id="i10-t" type="number" value="8"></div>
+                    <div><label>Ativos</label><input id="i10-a" type="number" value="7"></div>
+                    <div><label>Ausentes</label><input id="i10-x" class="calc" readonly></div>
+                    <div><label>Prod./Técnico</label><input id="i10-p" class="calc" readonly></div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 class="title">Registrar Produção</h3>
+                <div class="form-reg">
+                    <div><label>Ativações</label><input id="i10-ra" type="number" min="0" value="0"></div>
+                    <div><label>Mudanças</label><input id="i10-rm" type="number" min="0" value="0"></div>
+                    <div><label>Visitas</label><input id="i10-rv" type="number" min="0" value="0"></div>
+                    <button class="btn-reg" onclick="reg('i10')">Registrar</button>
+                </div>
+                <div class="hist">
+                    <table><thead><tr><th>Hora</th><th>A</th><th>M</th><th>V</th><th></th></tr></thead><tbody id="hist-i10"></tbody></table>
+                </div>
+                <div class="export">
+                    <button class="btn-exp pdf" onclick="exp('i10','pdf')">PDF</button>
+                    <button class="btn-exp csv" onclick="exp('i10','csv')">CSV</button>
+                    <button class="btn-exp wa" onclick="wa('i10')">WhatsApp</button>
+                    <button class="btn-exp sheets" onclick="sincronizarSheets('i10')">Sheets</button>
+                </div>
+                <div id="status-i10" class="status"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Ponto Net -->
+    <div id="sec-ponto" class="section">
+        <div class="grid grid-2">
+            <div class="card">
+                <h3 class="title">Carga Inicial - Ponto Net</h3>
+                <div class="grid grid-3">
+                    <div><label>Ativações</label><input id="ponto-i-a" type="number" value="6"></div>
+                    <div><label>Mudanças</label><input id="ponto-i-m" type="number" value="2"></div>
+                    <div><label>Visitas</label><input id="ponto-i-v" type="number" value="3"></div>
+                </div>
+                <h3 class="title" style="margin-top:20px;">Técnicos</h3>
+                <div class="grid grid-2">
+                    <div><label>Total</label><input id="ponto-t" type="number" value="12"></div>
+                    <div><label>Ativos</label><input id="ponto-a" type="number" value="10"></div>
+                    <div><label>Ausentes</label><input id="ponto-x" class="calc" readonly></div>
+                    <div><label>Prod./Técnico</label><input id="ponto-p" class="calc" readonly></div>
+                </div>
+            </div>
+            <div class="card">
+                <h3 class="title">Registrar Produção</h3>
+                <div class="form-reg">
+                    <div><label>Ativações</label><input id="ponto-ra" type="number" min="0" value="0"></div>
+                    <div><label>Mudanças</label><input id="ponto-rm" type="number" min="0" value="0"></div>
+                    <div><label>Visitas</label><input id="ponto-rv" type="number" min="0" value="0"></div>
+                    <button class="btn-reg" onclick="reg('ponto')">Registrar</button>
+                </div>
+                <div class="hist">
+                    <table><thead><tr><th>Hora</th><th>A</th><th>M</th><th>V</th><th></th></tr></thead><tbody id="hist-ponto"></tbody></table>
+                </div>
+                <div class="export">
+                    <button class="btn-exp pdf" onclick="exp('ponto','pdf')">PDF</button>
+                    <button class="btn-exp csv" onclick="exp('ponto','csv')">CSV</button>
+                    <button class="btn-exp wa" onclick="wa('ponto')">WhatsApp</button>
+                    <button class="btn-exp sheets" onclick="sincronizarSheets('ponto')">Sheets</button>
+                </div>
+                <div id="status-ponto" class="status"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- TOTAL GERAL -->
+    <div id="sec-total" class="section">
+        <div class="card">
+            <h3 class="title">Resumo Consolidado</h3>
+            <div class="total-grid">
+                <div class="total-card"><h4>Total Ordens</h4><p id="total-ordens">0</p></div>
+                <div class="total-card"><h4>Total Técnicos</h4><p id="total-tecnicos">0</p></div>
+                <div class="total-card"><h4>Técnicos Ativos</h4><p id="total-ativos">0</p></div>
+                <div class="total-card"><h4>Produtividade</h4><p id="total-prod">0</p></div>
+                <div class="total-card"><h4>Ativações</h4><p id="total-ativacoes">0</p></div>
+                <div class="total-card"><h4>Mudanças</h4><p id="total-mudancas">0</p></div>
+                <div class="total-card"><h4>Visitas</h4><p id="total-visitas">0</p></div>
+            </div>
+            <div class="export" style="margin-top:20px;">
+                <button class="btn-exp pdf" onclick="expTotal('pdf')">PDF Geral</button>
+                <button class="btn-exp wa" onclick="waTotal()">WhatsApp Geral</button>
+                <button class="btn-exp sheets" onclick="sincronizarSheets('total')">Sheets Geral</button>
+            </div>
+            <div id="status-total" class="status"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // CONFIGURAÇÕES GOOGLE SHEETS
+    const CLIENT_ID = 'SEU_CLIENT_ID.apps.googleusercontent.com'; // SUBSTITUA
+    const ID_PLANILHA = 'SEU_ID_DA_PLANILHA'; // SUBSTITUA
+    const DISCOVERY_DOC = 'https://sheets.googleapis.com/$discovery/rest?version=v4';
+    const SCOPES = 'https://www.googleapis.com/auth/spreadsheets';
+
+    const EMPRESAS = ['age', 'liknet', 'i10', 'ponto'];
+    const NOMES = { age: 'AGE FIBRA', liknet: 'Liknet', i10: 'I10', ponto: 'Ponto Net' };
+    let dados = {};
+    let gapiInited = false, gapiLoaded = false, gapiAuthInstance = null;
+
+    // Inicializar dados
+    EMPRESAS.forEach(c => {
+        dados[c] = { hist: [], inicial: {a:0,m:0,v:0}, tec: {total:15, ativos:12} };
+    });
+
+    function login() {
+        if (document.getElementById('user').value === 'AGE' && document.getElementById('pass').value === 'AGE') {
+            document.getElementById('login').classList.add('hidden');
+            document.getElementById('app').classList.remove('hidden');
+            loadAll();
+            atualizarTotal();
+            setInterval(atualizarHora, 1000);
+            initGoogleAPI();
+        } else {
+            document.getElementById('erro').classList.remove('hidden');
+        }
+    }
+
+    function logout() {
+        document.getElementById('app').classList.add('hidden');
+        document.getElementById('login').classList.remove('hidden');
+    }
+
+    function atualizarHora() {
+        document.getElementById('data-atual').textContent = new Date().toLocaleString('pt-BR');
+    }
+
+    // Abas
+    document.querySelectorAll('.tab').forEach(t => t.onclick = () => {
+        document.querySelectorAll('.tab').forEach(x => x.classList.remove('active'));
+        document.querySelectorAll('.section').forEach(x => x.classList.remove('active'));
+        t.classList.add('active');
+        document.getElementById('sec-' + t.dataset.c).classList.add('active');
+        if (t.dataset.c === 'total') atualizarTotal();
+    });
+
+    // Registrar
+    function reg(c) {
+        const a = parseInt(document.getElementById(c + '-ra').value) || 0;
+        const m = parseInt(document.getElementById(c + '-rm').value) || 0;
+        const v = parseInt(document.getElementById(c + '-rv').value) || 0;
+        if (a + m + v === 0) return;
+        const h = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
+        dados[c].hist.unshift({h, a, m, v});
+        limparRegistro(c);
+        atualizarHist(c);
+        calcular(c);
+        atualizarTotal();
+        salvar(c);
+    }
+
+    function limparRegistro(c) {
+        document.getElementById(c + '-ra').value = '';
+        document.getElementById(c + '-rm').value = '';
+        document.getElementById(c + '-rv').value = '';
+    }
+
+    function atualizarHist(c) {
+        const tbody = document.getElementById('hist-' + c);
+        tbody.innerHTML = '';
+        dados[c].hist.forEach((x, i) => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${x.h}</td><td>${x.a}</td><td>${x.m}</td><td>${x.v}</td><td><i class="fas fa-trash del" onclick="del('${c}',${i})"></i></td>`;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function del(c, i) {
+        dados[c].hist.splice(i, 1);
+        atualizarHist(c);
+        calcular(c);
+        atualizarTotal();
+        salvar(c);
+    }
+
+    function calcular(c) {
+        const ia = parseInt(document.getElementById(c + '-i-a').value) || 0;
+        const im = parseInt(document.getElementById(c + '-i-m').value) || 0;
+        const iv = parseInt(document.getElementById(c + '-i-v').value) || 0;
+        const reg = dados[c].hist.reduce((s,x) => s + x.a + x.m + x.v, 0);
+        const total = ia + im + iv + reg;
+        const ativos = parseInt(document.getElementById(c + '-a').value) || 1;
+        const media = (total / ativos).toFixed(2);
+
+        document.getElementById(c + '-x').value = (parseInt(document.getElementById(c + '-t').value) || 0) - ativos;
+        document.getElementById(c + '-p').value = `${media} ordens/técnico`;
+
+        dados[c].inicial = {a: ia, m: im, v: iv};
+        dados[c].tec = {total: parseInt(document.getElementById(c + '-t').value), ativos};
+    }
+
+    function atualizarTotal() {
+        let totalOrdens = 0, totalTec = 0, totalAtivos = 0, totalA = 0, totalM = 0, totalV = 0;
+
+        EMPRESAS.forEach(c => {
+            const d = dados[c];
+            const reg = d.hist.reduce((s,x) => s + x.a + x.m + x.v, 0);
+            totalOrdens += d.inicial.a + d.inicial.m + d.inicial.v + reg;
+            totalTec += d.tec.total;
+            totalAtivos += d.tec.ativos;
+            totalA += d.inicial.a + d.hist.reduce((s,x)=>s+x.a,0);
+            totalM += d.inicial.m + d.hist.reduce((s,x)=>s+x.m,0);
+            totalV += d.inicial.v + d.hist.reduce((s,x)=>s+x.v,0);
+        });
+
+        const prod = totalAtivos > 0 ? (totalOrdens / totalAtivos).toFixed(2) : 0;
+
+        document.getElementById('total-ordens').textContent = totalOrdens;
+        document.getElementById('total-tecnicos').textContent = totalTec;
+        document.getElementById('total-ativos').textContent = totalAtivos;
+        document.getElementById('total-prod').textContent = prod;
+        document.getElementById('total-ativacoes').textContent = totalA;
+        document.getElementById('total-mudancas').textContent = totalM;
+        document.getElementById('total-visitas').textContent = totalV;
+    }
+
+    // Exportar
+    function exp(c, tipo) {
+        const nome = NOMES[c];
+        if (tipo === 'pdf') {
+            const el = document.createElement('div');
+            el.innerHTML = `<h2>${nome}</h2><p>${new Date().toLocaleString('pt-BR')}</p>
+                <p>Total: ${document.getElementById(c + '-total')?.textContent || 0} | Média: ${document.getElementById(c + '-p').value}</p>
+                <h3>Histórico</h3><table border="1" style="width:100%;border-collapse:collapse;">
+                <tr><th>Hora</th><th>A</th><th>M</th><th>V</th></tr>
+                ${dados[c].hist.map(x => `<tr><td>${x.h}</td><td>${x.a}</td><td>${x.m}</td><td>${x.v}</td></tr>`).join('')}
+                </table>`;
+            html2pdf().from(el).set({margin: 1, filename: `${nome}_relatorio.pdf`}).save();
+            status(c, 'PDF gerado!', 'ok');
+        } else if (tipo === 'csv') {
+            let csv = `Relatório,${nome}\nData,${new Date().toLocaleString('pt-BR')}\n\n`;
+            csv += `Carga Inicial,Ativações,Mudanças,Visitas\n${dados[c].inicial.a},${dados[c].inicial.m},${dados[c].inicial.v}\n\n`;
+            csv += `Histórico,Hora,Ativações,Mudanças,Visitas\n`;
+            dados[c].hist.forEach(x => csv += `,${x.h},${x.a},${x.m},${x.v}\n`);
+            const blob = new Blob(['\uFEFF' + csv], {type: 'text/csv'});
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url; a.download = `${nome}_historico.csv`; a.click();
+            status(c, 'CSV baixado!', 'ok');
+        }
+    }
+
+    function expTotal(tipo) {
+        if (tipo === 'pdf') {
+            let html = `<h2>RELATÓRIO GERAL</h2><p>${new Date().toLocaleString('pt-BR')}</p><table border="1" style="width:100%;border-collapse:collapse;"><tr><th>Empresa</th><th>Ordens</th><th>Técnicos</th><th>Ativos</th><th>Prod.</th></tr>`;
+            EMPRESAS.forEach(c => {
+                const d = dados[c];
+                const reg = d.hist.reduce((s,x) => s + x.a + x.m + x.v, 0);
+                const total = d.inicial.a + d.inicial.m + d.inicial.v + reg;
+                const prod = d.tec.ativos > 0 ? (total / d.tec.ativos).toFixed(2) : 0;
+                html += `<tr><td>${NOMES[c]}</td><td>${total}</td><td>${d.tec.total}</td><td>${d.tec.ativos}</td><td>${prod}</td></tr>`;
+            });
+            html += `</table>`;
+            const el = document.createElement('div'); el.innerHTML = html;
+            html2pdf().from(el).set({margin: 1, filename: `RELATORIO_GERAL.pdf`}).save();
+            status('total', 'PDF Geral gerado!', 'ok');
+        }
+    }
+
+    function wa(c) {
+        const nome = NOMES[c];
+        const d = dados[c];
+        const reg = d.hist.reduce((s,x) => s + x.a + x.m + x.v, 0);
+        const total = d.inicial.a + d.inicial.m + d.inicial.v + reg;
+        const prod = d.tec.ativos > 0 ? (total / d.tec.ativos).toFixed(2) : 0;
+        let msg = `*${nome}*\n\nTotal: ${total} | Média: ${prod}\nTécnicos: ${d.tec.ativos}/${d.tec.total}\n\nÚltimos:\n`;
+        d.hist.slice(0,3).forEach(x => msg += `${x.h}: ${x.a}A ${x.m}M ${x.v}V\n`);
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        status(c, 'WhatsApp aberto!', 'ok');
+    }
+
+    function waTotal() {
+        let msg = `*RESUMO GERAL*\n\n${new Date().toLocaleDateString('pt-BR')}\n\n`;
+        let totalOrdens = 0, totalAtivos = 0;
+        EMPRESAS.forEach(c => {
+            const d = dados[c];
+            const reg = d.hist.reduce((s,x) => s + x.a + x.m + x.v, 0);
+            const total = d.inicial.a + d.inicial.m + d.inicial.v + reg;
+            totalOrdens += total; totalAtivos += d.tec.ativos;
+            msg += `*${NOMES[c]}*: ${total} ordens\n`;
+        });
+        msg += `\n*TOTAL*: ${totalOrdens} | Média: ${(totalOrdens/totalAtivos).toFixed(2)}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+        status('total', 'WhatsApp Geral aberto!', 'ok');
+    }
+
+    function status(id, msg, tipo) {
+        const el = document.getElementById('status-' + id);
+        el.textContent = msg;
+        el.className = 'status ' + tipo;
+        el.style.display = 'block';
+        setTimeout(() => el.style.display = 'none', 3000);
+    }
+
+    // Google Sheets
+    function initGoogleAPI() {
+        gapi.load('client:auth2', () => {
+            gapi.client.init({
+                clientId: CLIENT_ID,
+                discoveryDocs: [DISCOVERY_DOC],
+                scope: SCOPES
+            }).then(() => {
+                gapiInited = true;
+                gapiLoaded = true;
+                gapiAuthInstance = gapi.auth2.getAuthInstance();
+                console.log('Google Sheets API pronta');
+            });
+        });
+    }
+
+    async function sincronizarSheets(empresa) {
+        if (!gapiLoaded) return alert('Google API ainda carregando...');
+        if (!gapiAuthInstance.isSignedIn.get()) {
+            await gapiAuthInstance.signIn();
+        }
+
+        const aba = empresa === 'total' ? 'TotalGeral' : NOMES[empresa].replace(' ', '_');
+        const now = new Date().toLocaleString('pt-BR');
+        const rows = [];
+
+        if (empresa !== 'total') {
+            const d = dados[empresa];
+            rows.push([now, 'Carga Inicial', d.inicial.a, d.inicial.m, d.inicial.v]);
+            rows.push([now, 'Técnicos', d.tec.total, d.tec.ativos]);
+            d.hist.forEach(h => rows.push([now, 'Registro', h.h, h.a, h.m, h.v]));
+        } else {
+            EMPRESAS.forEach(c => {
+                const d = dados[c];
+                const total = d.inicial.a + d.inicial.m + d.inicial.v + d.hist.reduce((s,x)=>s+x.a+x.m+x.v,0);
+                rows.push([now, NOMES[c], total, d.tec.ativos, (total/d.tec.ativos).toFixed(2)]);
+            });
+        }
+
+        try {
+            await gapi.client.sheets.spreadsheets.values.append({
+                spreadsheetId: ID_PLANILHA,
+                range: aba + '!A1',
+                valueInputOption: 'RAW',
+                resource: { values: rows }
+            });
+            status(empresa, 'Sincronizado com Sheets!', 'ok');
+        } catch (err) {
+            status(empresa, 'Erro: ' + err.message, 'erro');
+        }
+    }
+
+    // Salvar/Carregar local
+    function salvar(c) { localStorage.setItem(c + '_fibra', JSON.stringify(dados[c])); }
+    function carregar(c) {
+        const str = localStorage.getItem(c + '_fibra');
+        if (str) {
+            dados[c] = JSON.parse(str);
+            document.getElementById(c + '-i-a').value = dados[c].inicial.a;
+            document.getElementById(c + '-i-m').value = dados[c].inicial.m;
+            document.getElementById(c + '-i-v').value = dados[c].inicial.v;
+            document.getElementById(c + '-t').value = dados[c].tec.total;
+            document.getElementById(c + '-a').value = dados[c].tec.ativos;
+            atualizarHist(c);
+            calcular(c);
+        }
+    }
+    function loadAll() { EMPRESAS.forEach(carregar); atualizarTotal(); }
+
+    // Inputs dinâmicos
+    document.querySelectorAll('input').forEach(i => {
+        if (i.id.includes('-t') || i.id.includes('-a') || i.id.includes('-i-')) {
+            i.oninput = () => { const c = i.id.split('-')[0]; calcular(c); atualizarTotal(); salvar(c); };
+        }
+    });
+
+    atualizarHora();
+</script>
+</body>
+</html>
